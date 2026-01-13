@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">CompuStore2</string>
+    <string name="title_home">Compustore ID</string>
+    <string name="title_detail">Detail Produk</string>
+    <string name="title_login">Masuk</string>
+    <string name="title_register">Daftar Akun</string>
+    <string name="title_cart">Keranjang</string>
+    <string name="title_checkout">Checkout</string>
+    <string name="title_history">Riwayat Pesanan</string>
+
+    <string name="label_email">Email</string>
+    <string name="label_password">Password</string>
+    <string name="label_name">Nama Lengkap</string>
+    <string name="label_phone">Nomor HP</string>
+    <string name="label_address">Alamat Pengiriman</string>
+    <string name="hint_email">masukkan email anda</string>
+    <string name="hint_password">masukkan password</string>
+
+    <string name="btn_login">Masuk</string>
+    <string name="btn_register">Daftar</string>
+    <string name="btn_add_cart">+ Keranjang</string>
+    <string name="btn_buy_now">Beli Sekarang</string>
+    <string name="btn_checkout">Bayar Sekarang</string>
+    <string name="btn_cancel">Batal</string>
+    <string name="text_no_account">Belum punya akun? Daftar</string>
+    <string name="text_have_account">Sudah punya akun? Masuk</string>
+
+    <string name="stok_tersedia">Stok: %1$d</string>
+    <string name="harga_format">Rp %1$,.0f</string>
+    <string name="kategori">Kategori: %1$s</string>
+    <string name="deskripsi">Deskripsi</string>
+
+    <string name="loading">Memuat data...</string>
+    <string name="error_empty_field">Data tidak boleh kosong</string>
+    <string name="error_login_failed">Login gagal, periksa email/password</string>
+    <string name="success_register">Registrasi berhasil! Silakan login.</string>
+    <string name="required_login_msg">Harap login terlebih dahulu</string>
+</resources>
