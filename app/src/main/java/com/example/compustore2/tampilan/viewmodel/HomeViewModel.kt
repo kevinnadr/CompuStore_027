@@ -7,36 +7,39 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.compustore2.model.CartItem
 import com.example.compustore2.model.Produk
-import com.example.compustore2.repositori.LocalCartRepository
 import com.example.compustore2.repositori.RepositoriCompustore
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 import java.io.IOException
 
-
-// --- STATE MANAGEMENT ---
+// UI State (Dimodifikasi agar bisa membawa pesan error)
 sealed interface HomeUiState {
     data class Success(val produk: List<Produk>) : HomeUiState
-    object Error : HomeUiState
+    data class Error(val message: String) : HomeUiState // <--- Simpan pesan error di sini
     object Loading : HomeUiState
 }
 
 class HomeViewModel(private val repositori: RepositoriCompustore) : ViewModel() {
 
-    // State untuk UI (Loading -> Data -> Error)
+    // State Utama
     var homeUiState: HomeUiState by mutableStateOf(HomeUiState.Loading)
         private set
 
-    // State untuk Keranjang (Realtime update)
-    val cartItems: StateFlow<List<CartItem>> = LocalCartRepository.cartItems
+    // State Keranjang (Realtime)
+    val cartItems: StateFlow<List<CartItem>> = repositori.cartItems
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
-    // Init: Jalan otomatis saat ViewModel dibuat
     init {
         getProduk()
     }
 
-    // --- 1. FITUR DATA PRODUK ---
+    // Fungsi Ambil Data dengan Diagnosa Error
     fun getProduk() {
         viewModelScope.launch {
             homeUiState = HomeUiState.Loading
@@ -44,38 +47,34 @@ class HomeViewModel(private val repositori: RepositoriCompustore) : ViewModel() 
                 val listProduk = repositori.getProduk()
                 HomeUiState.Success(listProduk)
             } catch (e: IOException) {
-                // Error Koneksi (WiFi mati / Server down)
-                HomeUiState.Error
-            } catch (e: HttpException) {
-                // Error Server (404 / 500)
-                HomeUiState.Error
+                // Error Koneksi (Internet mati / Server mati / Salah IP)
+                HomeUiState.Error("Koneksi Gagal: ${e.localizedMessage}. Cek IP & Server.")
+            } catch (e: Exception) {
+                // Error Lain (Format JSON salah / Data null)
+                HomeUiState.Error("Error Data: ${e.localizedMessage}")
             }
         }
     }
 
-    // --- 2. FITUR AUTHENTICATION (LOGIN/LOGOUT) ---
-    fun isUserLoggedIn(): Boolean {
-        return repositori.getLoggedInUser() != null
-    }
-
-    fun logout() {
-        repositori.logout()
-        LocalCartRepository.clearCart() // Kosongkan keranjang saat logout
-        // Opsional: Refresh produk atau navigasi ulang di UI
-    }
-
-    // --- 3. FITUR KERANJANG (CART) ---
+    // Fungsi Keranjang
     fun addToCart(produk: Produk) {
-        if (isUserLoggedIn()) {
-            LocalCartRepository.addItem(produk)
+        viewModelScope.launch {
+            repositori.addToCart(produk)
         }
     }
 
     fun removeFromCart(produkId: Int) {
-        LocalCartRepository.removeItem(produkId)
+        viewModelScope.launch {
+            repositori.removeFromCart(produkId)
+        }
     }
 
     fun getTotalCartPrice(): Double {
-        return LocalCartRepository.getTotalPrice()
+        return cartItems.value.sumOf { it.produk.harga * it.jumlah }
+    }
+
+    // --- Dummy Auth (Agar HalamanHome tidak error) ---
+    fun isUserLoggedIn(): Boolean {
+        return true // Anggap user sudah login (untuk testing)
     }
 }

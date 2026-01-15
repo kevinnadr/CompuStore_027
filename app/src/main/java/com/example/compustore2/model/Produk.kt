@@ -1,33 +1,24 @@
 package com.example.compustore2.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-import com.google.gson.annotations.SerializedName
-
-
+@Serializable
 data class Produk(
-    // PERBAIKAN 1: Di database Anda namanya 'produk_id', bukan 'id'
-    @SerializedName("produk_id")
-    val id: Int,
+    // PERBAIKAN UTAMA: Sesuaikan dengan nama kolom di Database Anda
+    @SerialName("produk_id")
+    val id: Int = 0,
 
-    // PERBAIKAN 2: Di database Anda namanya 'nama_produk'
-    @SerializedName("nama_produk")
-    val namaProduk: String?,
+    @SerialName("nama_produk")
+    val namaProduk: String? = "",
 
-    @SerializedName("kategori")
-    val kategori: String?,
+    val kategori: String? = "",
+    val merk: String? = "",
 
-    @SerializedName("merk")
-    val merk: String?,
+    val harga: Double = 0.0,
 
-    @SerializedName("harga")
-    val harga: Double,
+    val stok: Int = 0,
 
-    @SerializedName("stok")
-    val stok: Int,
-
-    @SerializedName("deskripsi")
-    val deskripsi: String?,
-
-    @SerializedName("gambar")
-    val gambar: String?
+    val deskripsi: String? = "",
+    val gambar: String? = ""
 )

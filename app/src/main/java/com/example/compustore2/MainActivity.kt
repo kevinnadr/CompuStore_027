@@ -20,19 +20,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Ganti nama Theme jika perlu (biasanya otomatis terbuat)
-            MaterialTheme {
+            CompuStore2Theme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    PengelolaHalaman()
+                    // JANGAN PANGGIL PengelolaHalaman() DI SINI!
+                    // PANGGIL CompustoreApp() AGAR BOTTOM BAR MUNCUL
+                    CompustoreApp()
                 }
             }
         }
     }
 }
-
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(

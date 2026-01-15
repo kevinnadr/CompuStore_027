@@ -5,56 +5,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.compustore2.model.LoginRequest
-import com.example.compustore2.model.User
 import com.example.compustore2.repositori.RepositoriCompustore
+import com.example.compustore2.repositori.UserPreferencesRepository
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
-import java.io.IOException
 
-// State untuk UI (Loading, Sukses, Gagal)
-sealed interface LoginUiState {
-    object Idle : LoginUiState
-    object Loading : LoginUiState
-    data class Success(val user: User) : LoginUiState
-    data class Error(val message: String) : LoginUiState
-}
+class LoginViewModel(
+    private val repositori: RepositoriCompustore,
+    private val userPreferencesRepository: UserPreferencesRepository
+) : ViewModel() {
 
-class LoginViewModel(private val repositori: RepositoriCompustore) : ViewModel() {
-
-    var uiState: LoginUiState by mutableStateOf(LoginUiState.Idle)
-        private set
-
-    // State untuk input form
+    // --- PASTIKAN TIDAK ADA KATA 'private' DI DEPAN var INI ---
     var email by mutableStateOf("")
     var password by mutableStateOf("")
 
-    fun onLogin() {
-        uiState = LoginUiState.Loading
-        viewModelScope.launch {
-            try {
-                val response = repositori.login(LoginRequest(email, password))
+    var errorMessage by mutableStateOf<String?>(null)
+    var isLoading by mutableStateOf(false)
 
-                if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body?.data != null) {
-                        uiState = LoginUiState.Success(body.data)
-                    } else {
-                        uiState = LoginUiState.Error("Respon server kosong")
-                    }
+    fun onLogin(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                // Simulasi Login (Nanti diganti API)
+                if (email.isNotEmpty() && password.isNotEmpty()) {
+                    userPreferencesRepository.saveLoginSession(true, "User", email)
+                    onSuccess()
                 } else {
-                    uiState = LoginUiState.Error("Login gagal: ${response.message()}")
+                    errorMessage = "Email dan Password tidak boleh kosong"
                 }
-            } catch (e: IOException) {
-                uiState = LoginUiState.Error("Kesalahan jaringan. Periksa koneksi internet.")
-            } catch (e: HttpException) {
-                uiState = LoginUiState.Error("Kesalahan server: ${e.message}")
+            } catch (e: Exception) {
+                errorMessage = "Login Gagal: ${e.message}"
+            } finally {
+                isLoading = false
             }
         }
-    }
-
-    // Reset status jika ingin login ulang setelah error
-    fun resetState() {
-        uiState = LoginUiState.Idle
     }
 }

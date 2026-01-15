@@ -5,75 +5,93 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.compustore2.model.CartItem
 import com.example.compustore2.model.DetailTransaksiRequest
 import com.example.compustore2.model.TransaksiRequest
-import com.example.compustore2.repositori.LocalCartRepository
 import com.example.compustore2.repositori.RepositoriCompustore
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-
-// State UI Checkout
-sealed interface CheckoutUiState {
-    object Idle : CheckoutUiState
-    object Loading : CheckoutUiState
-    object Success : CheckoutUiState
-    data class Error(val message: String) : CheckoutUiState
+sealed class CheckoutUiState {
+    object Initial : CheckoutUiState()
+    object Loading : CheckoutUiState()
+    object Success : CheckoutUiState()
+    data class Error(val message: String) : CheckoutUiState()
 }
 
 class CheckoutViewModel(private val repositori: RepositoriCompustore) : ViewModel() {
 
-    var uiState: CheckoutUiState by mutableStateOf(CheckoutUiState.Idle)
+    val cartItems: StateFlow<List<CartItem>> = repositori.cartItems
+        .stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(5000), initialValue = emptyList())
+
+    private val _checkoutState = MutableStateFlow<CheckoutUiState>(CheckoutUiState.Initial)
+    val checkoutState: StateFlow<CheckoutUiState> = _checkoutState
+
+    // --- TAMBAHAN 1: VARIABEL UNTUK MENYIMPAN PILIHAN METODE BAYAR ---
+    var metodePembayaranDipilih by mutableStateOf("Transfer Bank") // Default
         private set
 
-    // Ambil data keranjang & total harga dari Repository Lokal
-    val cartItems = LocalCartRepository.cartItems.value
-    val totalPrice = LocalCartRepository.getTotalPrice()
+    fun updateMetodePembayaran(metode: String) {
+        metodePembayaranDipilih = metode
+    }
+    // -----------------------------------------------------------------
 
-    // Input Pilihan User
-    var metodePembayaran by mutableStateOf("Transfer") // Default
-    var metodePengiriman by mutableStateOf("Diantar")  // Default
-
-    fun processCheckout() {
-        uiState = CheckoutUiState.Loading
-
-        val user = repositori.getLoggedInUser()
-        if (user == null) {
-            uiState = CheckoutUiState.Error("User belum login!")
-            return
-        }
-
-        // 1. Konversi Item Keranjang ke format DetailTransaksiRequest
-        val detailBarang = cartItems.map { item ->
-            DetailTransaksiRequest(
-                produkId = item.produk.id,
-                jumlah = item.jumlah,
-                hargaSatuan = item.produk.harga,
-                subtotal = item.totalHarga
-            )
-        }
-
-        // 2. Buat Request Object
-        val request = TransaksiRequest(
-            userId = user.userId,
-            totalHarga = totalPrice,
-            metodePembayaran = metodePembayaran,
-            metodePengiriman = metodePengiriman,
-            detailBarang = detailBarang
-        )
-
-        // 3. Kirim ke Backend
+    fun prosesCheckout(totalHarga: Double) {
         viewModelScope.launch {
+            _checkoutState.value = CheckoutUiState.Loading
+
             try {
-                val response = repositori.createTransaksi(request)
-                if (response.isSuccessful) {
-                    LocalCartRepository.clearCart() // Kosongkan keranjang jika sukses
-                    uiState = CheckoutUiState.Success
-                } else {
-                    uiState = CheckoutUiState.Error("Gagal Checkout: ${response.message()}")
+                val currentItems = repositori.cartItems.first()
+                if (currentItems.isEmpty()) {
+                    _checkoutState.value = CheckoutUiState.Error("Keranjang kosong!")
+                    return@launch
                 }
+
+                val userId = 1
+                val tanggalSekarang = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+                val detailList = currentItems.map { item ->
+                    DetailTransaksiRequest(
+                        produkId = item.produk.id,
+                        jumlah = item.jumlah,
+                        harga = (item.produk.harga * item.jumlah)
+                    )
+                }
+
+                val request = TransaksiRequest(
+                    userId = userId,
+                    total = totalHarga,
+                    status = "pending",
+                    tanggal = tanggalSekarang,
+                    alamat = "Jl. Default No. 1",
+
+                    // --- TAMBAHAN 2: GUNAKAN VARIABEL PILIHAN USER ---
+                    metodePembayaran = metodePembayaranDipilih,
+                    // -------------------------------------------------
+
+                    items = detailList
+                )
+
+                val response = repositori.createTransaksi(request)
+
+                if (response.isSuccessful) {
+                    repositori.clearCart()
+                    _checkoutState.value = CheckoutUiState.Success
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                    _checkoutState.value = CheckoutUiState.Error("Gagal: $errorBody")
+                }
+
             } catch (e: Exception) {
-                uiState = CheckoutUiState.Error("Terjadi kesalahan jaringan.")
+                _checkoutState.value = CheckoutUiState.Error("Error: ${e.localizedMessage}")
             }
         }
+    }
+
+    fun resetState() {
+        _checkoutState.value = CheckoutUiState.Initial
     }
 }

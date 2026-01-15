@@ -24,10 +24,3 @@ data class LoginRequest(
 )
 
 // Model untuk mengirim data saat Register
-data class RegisterRequest(
-    @SerializedName("nama") val nama: String,
-    @SerializedName("email") val email: String,
-    @SerializedName("password") val password: String,
-    @SerializedName("no_hp") val noHp: String,
-    @SerializedName("role") val role: String = "user" // Default user
-)

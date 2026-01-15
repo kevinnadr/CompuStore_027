@@ -1,88 +1,78 @@
 package com.example.compustore2.repositori
 
-import com.example.compustore2.model.AuthResponse
-import com.example.compustore2.model.LoginRequest
+import com.example.compustore2.model.CartItem
 import com.example.compustore2.model.Produk
 import com.example.compustore2.model.RegisterRequest
 import com.example.compustore2.model.RiwayatTransaksi
 import com.example.compustore2.model.TransaksiRequest
-import com.example.compustore2.model.User
 import com.example.compustore2.service_api.CompustoreService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import retrofit2.Response
 
-interface RepositoriCompustore {
-    suspend fun getProduk(): List<Produk>
-    suspend fun login(loginRequest: LoginRequest): Response<AuthResponse>
-    suspend fun register(registerRequest: RegisterRequest): Response<AuthResponse>
+class RepositoriCompustore(private val compustoreService: CompustoreService) {
 
-    suspend fun getRiwayatTransaksi(userId: String): List<RiwayatTransaksi>
+    // --- CRUD PRODUK ---
 
-    suspend fun insertProduk(produk: Produk): Response<Void>
-    suspend fun updateProduk(id: Int, produk: Produk): Response<Void>
-    suspend fun deleteProduk(id: Int): Response<Void>
+    suspend fun getProduk(): List<Produk> = compustoreService.getProduk()
 
-    // Tambahkan baris ini
-    suspend fun getProdukById(id: Int): Response<Produk>
+    suspend fun getProdukById(id: Int): Response<Produk> = compustoreService.getProdukById(id)
 
-    // ... di dalam interface RepositoriCompustore
-    suspend fun createTransaksi(request: TransaksiRequest): Response<Void>
+    suspend fun insertProduk(produk: Produk): Response<Void> = compustoreService.insertProduk(produk)
 
-    // TAMBAHAN: Fungsi untuk Cek Login
-    fun getLoggedInUser(): User?
-    fun saveLoggedInUser(user: User)
-    fun logout()
-}
+    // TAMBAHAN: UPDATE
+    suspend fun updateProduk(id: Int, produk: Produk): Response<Void> {
+        return compustoreService.updateProduk(id, produk)
+    }
 
-class NetworkRepositoriCompustore(
-    private val compustoreService: CompustoreService
-) : RepositoriCompustore {
+    suspend fun deleteProduk(id: Int): Response<Void> = compustoreService.deleteProduk(id)
 
-    // Variable penyimpan sesi (Memory Session)
-    private var loggedInUser: User? = null
 
-    override suspend fun getProduk(): List<Produk> = compustoreService.getAllProduk()
+    // --- TRANSAKSI & RIWAYAT ---
 
-    override suspend fun login(loginRequest: LoginRequest): Response<AuthResponse> {
-        val response = compustoreService.loginUser(loginRequest)
-        // Jika login sukses dari server, kita simpan otomatis di sini juga bisa
-        if (response.isSuccessful && response.body()?.data != null) {
-            loggedInUser = response.body()?.data
+    suspend fun createTransaksi(transaksi: TransaksiRequest): Response<Void> {
+        return compustoreService.createTransaksi(transaksi)
+    }
+
+    // UBAH BAGIAN INI:
+    suspend fun getRiwayatTransaksi(): List<RiwayatTransaksi> {
+        return compustoreService.getRiwayatTransaksi()
+    }
+
+    // --- AUTH (REGISTER) ---
+    // TAMBAHAN: REGISTER
+    suspend fun register(request: RegisterRequest): Response<Void> {
+        return compustoreService.register(request)
+    }
+
+
+    // --- KERANJANG LOCAL (StateFlow) ---
+
+    private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
+    val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
+
+    fun addToCart(produk: Produk) {
+        _cartItems.update { currentItems ->
+            val existingItem = currentItems.find { it.produk.id == produk.id }
+            if (existingItem != null) {
+                currentItems.map {
+                    if (it.produk.id == produk.id) it.copy(jumlah = it.jumlah + 1) else it
+                }
+            } else {
+                currentItems + CartItem(produk, 1)
+            }
         }
-        return response
     }
 
-    override suspend fun register(registerRequest: RegisterRequest): Response<AuthResponse> {
-        return compustoreService.registerUser(registerRequest)
+    fun removeFromCart(produkId: Int) {
+        _cartItems.update { currentItems ->
+            currentItems.filter { it.produk.id != produkId }
+        }
     }
 
-    // Implementasi Fungsi Session
-    override fun getLoggedInUser(): User? = loggedInUser
-
-    override fun saveLoggedInUser(user: User) {
-        loggedInUser = user
+    fun clearCart() {
+        _cartItems.value = emptyList()
     }
-
-    override fun logout() {
-        loggedInUser = null
-    }
-
-    // ... di dalam class NetworkRepositoriCompustore
-    override suspend fun createTransaksi(request: TransaksiRequest): Response<Void> {
-        return compustoreService.createTransaksi(request)
-    }
-
-    override suspend fun getRiwayatTransaksi(userId: String): List<RiwayatTransaksi> {
-        return compustoreService.getRiwayatTransaksi(userId)
-    }
-
-    // Implementasi baris ini
-    override suspend fun getProdukById(id: Int): Response<Produk> {
-        return compustoreService.getProdukById(id)
-    }
-
-    // Implementasi
-    override suspend fun insertProduk(produk: Produk) = compustoreService.insertProduk(produk)
-    override suspend fun updateProduk(id: Int, produk: Produk) = compustoreService.updateProduk(id, produk)
-    override suspend fun deleteProduk(id: Int) = compustoreService.deleteProduk(id)
-
 }

@@ -1,67 +1,84 @@
 package com.example.compustore2.tampilan.view
 
-
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.compustore2.tampilan.route.DestinasiNavigasi
+import com.example.compustore2.R // Pastikan R di-import
+import com.example.compustore2.tampilan.CompustoreBottomAppBar
 import com.example.compustore2.tampilan.viewmodel.PenyediaViewModel
 import com.example.compustore2.tampilan.viewmodel.ProfileViewModel
 
-
-object DestinasiProfile : DestinasiNavigasi {
-    override val route = "profile"
-    override val titleRes = "Profile"
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HalamanProfile(
-    onLogout: () -> Unit,
-    onBack: () -> Unit, // Opsional jika belum ada bottom bar
+    onBack: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onLogin: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(factory = PenyediaViewModel.Factory)
 ) {
-    val user = viewModel.currentUser
+    // 1. Ambil Data Terbaru dari ViewModel (Ganti cara lama)
+    val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(title = { Text("Profile Saya") })
-        }
-    ) { innerPadding ->
+    // Cek apakah user sudah login atau belum
+    if (uiState.isLogin) {
+        // TAMPILAN JIKA SUDAH LOGIN
         Column(
             modifier = Modifier
-                .padding(innerPadding)
-                .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Ikon Profile Besar
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Foto Profil
             Icon(
-                imageVector = Icons.Default.AccountCircle,
+                imageVector = Icons.Default.Person,
                 contentDescription = null,
-                modifier = Modifier.size(120.dp),
-                tint = MaterialTheme.colorScheme.primary
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+                    .padding(16.dp),
+                tint = Color.White
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            if (user != null) {
-                // Info User
-                ProfileItem(label = "Nama", value = user.nama)
-                ProfileItem(label = "Email", value = user.email)
-                ProfileItem(label = "Role", value = user.role)
-                // ProfileItem(label = "No HP", value = user.noHp) // Jika ada di model User
-            } else {
-                Text("User tidak ditemukan (Anda belum login)")
-            }
+            // Nama & Email (Ambil dari uiState)
+            Text(
+                text = uiState.username, // Data Real
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = uiState.email,    // Data Real
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Info Tambahan (Card)
+            CardInfo(label = "Role", value = "Member") // Default Member
+            CardInfo(label = "Status", value = "Aktif")
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -69,24 +86,48 @@ fun HalamanProfile(
             Button(
                 onClick = {
                     viewModel.logout()
-                    onLogout()
+                    onLogout() // Navigasi ke halaman login/home setelah logout
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
             ) {
-                Icon(Icons.Default.ExitToApp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Keluar Aplikasi")
+                Text("Logout")
+            }
+        }
+    } else {
+        // TAMPILAN JIKA BELUM LOGIN (Guest)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Anda belum login")
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onLogin) {
+                    Text("Login Sekarang")
+                }
             }
         }
     }
 }
 
 @Composable
-fun ProfileItem(label: String, value: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-        Text(text = java.lang.String.valueOf(value), style = MaterialTheme.typography.bodyLarge)
-        Divider()
+fun CardInfo(label: String, value: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, color = Color.Gray)
+            Text(value, fontWeight = FontWeight.SemiBold)
+        }
     }
 }

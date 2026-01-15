@@ -12,17 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.compustore2.tampilan.route.DestinasiNavigasi
+import com.example.compustore2.tampilan.CompustoreTopAppBar
+
+import com.example.compustore2.tampilan.viewmodel.EntryUiState
 import com.example.compustore2.tampilan.viewmodel.EntryViewModel
 import com.example.compustore2.tampilan.viewmodel.PenyediaViewModel
 import kotlinx.coroutines.launch
 
-object DestinasiEntry : DestinasiNavigasi {
-    override val route = "entry_produk"
-    override val titleRes = "Tambah Barang"
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HalamanEntry(
     onNavigateBack: () -> Unit,
@@ -33,94 +29,94 @@ fun HalamanEntry(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Tambah Barang Baru") })
+            CompustoreTopAppBar(
+                title = "Tambah Produk",
+                canNavigateBack = true,
+                navigateUp = onNavigateBack
+            )
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
                 .verticalScroll(scrollState)
+                .padding(16.dp)
         ) {
-            val uiState = viewModel.uiState
-
-            OutlinedTextField(
-                value = uiState.nama,
-                onValueChange = { viewModel.updateUiState(uiState.copy(nama = it)) },
-                label = { Text("Nama Produk") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.kategori,
-                onValueChange = { viewModel.updateUiState(uiState.copy(kategori = it)) },
-                label = { Text("Kategori (Laptop/Mouse/dll)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.merk,
-                onValueChange = { viewModel.updateUiState(uiState.copy(merk = it)) },
-                label = { Text("Merk") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.harga,
-                onValueChange = { viewModel.updateUiState(uiState.copy(harga = it)) },
-                label = { Text("Harga") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.stok,
-                onValueChange = { viewModel.updateUiState(uiState.copy(stok = it)) },
-                label = { Text("Stok") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.deskripsi,
-                onValueChange = { viewModel.updateUiState(uiState.copy(deskripsi = it)) },
-                label = { Text("Deskripsi") },
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
+            // PERUBAHAN: Memanggil EntryBody (sebelumnya FormInput)
+            EntryBody(
+                entryUiState = viewModel.uiState,
+                onValueChange = viewModel::updateUiState,
+                onSaveClick = {
                     coroutineScope.launch {
                         viewModel.saveProduk()
-                        onNavigateBack() // Kembali setelah simpan
+                        onNavigateBack()
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Simpan Barang")
-            }
+                }
+            )
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(8.dp))
+// PERUBAHAN PENTING:
+// Nama fungsi diganti dari 'FormInput' menjadi 'EntryBody'
+// agar bisa dipanggil (re-use) oleh HalamanUpdate.kt
+@Composable
+fun EntryBody(
+    entryUiState: EntryUiState,
+    onValueChange: (EntryUiState) -> Unit,
+    onSaveClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-            OutlinedButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Batal")
-            }
+        OutlinedTextField(
+            value = entryUiState.insertUiEvent.namaProduk,
+            onValueChange = { onValueChange(entryUiState.copy(insertUiEvent = entryUiState.insertUiEvent.copy(namaProduk = it))) },
+            label = { Text("Nama Produk") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = entryUiState.insertUiEvent.harga,
+            onValueChange = { onValueChange(entryUiState.copy(insertUiEvent = entryUiState.insertUiEvent.copy(harga = it))) },
+            label = { Text("Harga") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = entryUiState.insertUiEvent.stok,
+            onValueChange = { onValueChange(entryUiState.copy(insertUiEvent = entryUiState.insertUiEvent.copy(stok = it))) },
+            label = { Text("Stok") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = entryUiState.insertUiEvent.kategori,
+            onValueChange = { onValueChange(entryUiState.copy(insertUiEvent = entryUiState.insertUiEvent.copy(kategori = it))) },
+            label = { Text("Kategori") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = entryUiState.insertUiEvent.deskripsi,
+            onValueChange = { onValueChange(entryUiState.copy(insertUiEvent = entryUiState.insertUiEvent.copy(deskripsi = it))) },
+            label = { Text("Deskripsi") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+
+        Button(
+            onClick = onSaveClick,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Simpan")
         }
     }
 }

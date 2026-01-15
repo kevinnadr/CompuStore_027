@@ -1,36 +1,42 @@
-package com.example.compustore2.ui.view
+package com.example.compustore2.tampilan.view
 
+
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items // <--- INI PENTING YANG BIKIN ERROR SEBELUMNYA
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.compustore2.R
 import com.example.compustore2.model.CartItem
 import com.example.compustore2.model.Produk
-import com.example.compustore2.tampilan.route.DestinasiNavigasi
+import com.example.compustore2.tampilan.CompustoreTopAppBar
 import com.example.compustore2.tampilan.viewmodel.HomeUiState
 import com.example.compustore2.tampilan.viewmodel.HomeViewModel
 import com.example.compustore2.tampilan.viewmodel.PenyediaViewModel
-
-object DestinasiHome : DestinasiNavigasi {
-    override val route = "home"
-    override val titleRes = "Compustore"
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,92 +45,88 @@ fun HalamanHome(
     onNavigateToCheckout: () -> Unit = {},
     onNavigateToEntry: () -> Unit = {},
     onNavigateToDetail: (Int) -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(factory = PenyediaViewModel.Factory)
 ) {
-    var showLoginDialog by remember { mutableStateOf(false) }
     var showCartPopup by remember { mutableStateOf(false) }
-
     val homeState = viewModel.homeUiState
     val cartItems by viewModel.cartItems.collectAsState()
     val totalCartItems = cartItems.sumOf { it.jumlah }
 
-    val isAdmin = true
+    LaunchedEffect(Unit) { viewModel.getProduk() }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Compustore ID") },
+            // TopBar Custom dengan Tombol Keranjang
+            CompustoreTopAppBar(
+                title = "CompuStore ID",
+                canNavigateBack = false,
                 actions = {
-                    BadgedBox(
-                        badge = {
-                            if (totalCartItems > 0) {
-                                Badge { Text(totalCartItems.toString()) }
-                            }
+                    Box(modifier = Modifier.padding(end = 8.dp)) {
+                        IconButton(onClick = { showCartPopup = true }) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = "Keranjang",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
-                    ) {
-                        IconButton(onClick = {
-                            if (viewModel.isUserLoggedIn()) {
-                                showCartPopup = true
-                            } else {
-                                showLoginDialog = true
+                        // Badge Merah (Angka)
+                        if (totalCartItems > 0) {
+                            Badge(
+                                containerColor = Color.Red,
+                                contentColor = Color.White,
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Text(totalCartItems.toString(), fontSize = 10.sp)
                             }
-                        }) {
-                            Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = "Keranjang")
                         }
                     }
                 }
             )
         },
         floatingActionButton = {
-            if (isAdmin) {
-                FloatingActionButton(
-                    onClick = onNavigateToEntry,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Barang")
-                }
+            FloatingActionButton(
+                onClick = onNavigateToEntry,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Barang")
             }
         }
     ) { innerPadding ->
-
-        when (homeState) {
-            is HomeUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            is HomeUiState.Success -> {
-                if (homeState.produk.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Belum ada barang tersedia") }
-                } else {
-                    ListProduk(
-                        produkList = homeState.produk,
-                        onAddToCart = { produk ->
-                            if (viewModel.isUserLoggedIn()) {
-                                viewModel.addToCart(produk)
-                            } else {
-                                showLoginDialog = true
-                            }
-                        },
-                        onDetailClick = onNavigateToDetail,
-                        modifier = Modifier.padding(innerPadding)
-                    )
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+        ) {
+            when (homeState) {
+                is HomeUiState.Loading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                is HomeUiState.Success -> {
+                    if (homeState.produk.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Belum ada barang tersedia.", color = Color.Gray)
+                        }
+                    } else {
+                        GridProduk(
+                            produkList = homeState.produk,
+                            onAddToCart = { viewModel.addToCart(it) },
+                            onDetailClick = onNavigateToDetail
+                        )
+                    }
+                }
+                is HomeUiState.Error -> {
+                    ErrorScreen(message = homeState.message, onRetry = { viewModel.getProduk() })
                 }
             }
-            is HomeUiState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Gagal memuat data / Server Error") }
         }
 
-        if (showLoginDialog) {
-            AlertDialog(
-                onDismissRequest = { showLoginDialog = false },
-                title = { Text("Belum Login") },
-                text = { Text("Silakan login untuk berbelanja.") },
-                confirmButton = {
-                    Button(onClick = { showLoginDialog = false; onNavigateToLogin() }) { Text("Login") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showLoginDialog = false }) { Text("Batal") }
-                }
-            )
-        }
-
+        // Popup Keranjang
         if (showCartPopup) {
             CartPopup(
                 cartItems = cartItems,
@@ -141,75 +143,121 @@ fun HalamanHome(
     }
 }
 
+// --- KOMPONEN UI ---
+
 @Composable
-fun ListProduk(
+fun GridProduk(
     produkList: List<Produk>,
     onAddToCart: (Produk) -> Unit,
-    onDetailClick: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onDetailClick: (Int) -> Unit
 ) {
-    LazyColumn(modifier = modifier) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Banner Promo
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+            PromoBanner()
+        }
+        // List Produk
         items(produkList) { produk ->
-            CardProduk(
-                produk = produk,
-                onAddToCart = onAddToCart,
-                onDetailClick = onDetailClick
-            )
+            ProductCardModern(produk, onAddToCart, onDetailClick)
         }
     }
 }
 
 @Composable
-fun CardProduk(
+fun PromoBanner() {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier.fillMaxWidth().height(150.dp).padding(bottom = 8.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(
+                    Brush.horizontalGradient(listOf(Color(0xFF6200EE), Color(0xFFBB86FC)))
+                )
+            )
+            Row(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Promo Spesial!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text("Diskon Laptop Gaming!", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                }
+                Icon(Icons.Default.Star, contentDescription = null, tint = Color.Yellow, modifier = Modifier.size(48.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductCardModern(
     produk: Produk,
     onAddToCart: (Produk) -> Unit,
     onDetailClick: (Int) -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth()
-            .clickable { onDetailClick(produk.id) },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onDetailClick(produk.id) }
     ) {
         Column {
-            // Gambar Produk
-            AsyncImage(
-                model = "http://10.0.2.2:3000/uploads/${produk.gambar ?: ""}", // Tambahkan ?: ""
-                contentDescription = produk.namaProduk ?: "Produk", // Tambahkan ?: "Produk"
-                error = painterResource(R.drawable.ic_launcher_background),
-                placeholder = painterResource(R.drawable.ic_launcher_foreground),
-                modifier = Modifier.fillMaxWidth().height(150.dp),
-                contentScale = ContentScale.Crop
-            )
-
-            Column(modifier = Modifier.padding(12.dp)) {
-                // PERBAIKAN DI SINI (Tambahkan ?: "...")
-                Text(
-                    text = produk.namaProduk ?: "Nama Tidak Tersedia",
-                    style = MaterialTheme.typography.titleMedium
+            Box(modifier = Modifier.height(140.dp).fillMaxWidth()) {
+                AsyncImage(
+                    model = "http://10.0.2.2:3000/uploads/${produk.gambar ?: ""}",
+                    contentDescription = produk.namaProduk,
+                    error = painterResource(R.drawable.ic_launcher_background),
+                    placeholder = painterResource(R.drawable.ic_launcher_foreground),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
-                Text(
-                    text = "Rp ${String.format("%,.0f", produk.harga)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Stok: ${produk.stok}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Button(
-                    onClick = { onAddToCart(produk) },
-                    modifier = Modifier.fillMaxWidth()
+                Surface(
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(bottomEnd = 8.dp),
+                    modifier = Modifier.align(Alignment.TopStart)
                 ) {
-                    Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Tambah Keranjang")
+                    Text("Stok: ${produk.stok}", color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(produk.namaProduk ?: "Tanpa Nama", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Rp ${String.format("%,.0f", produk.harga)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { onAddToCart(produk) },
+                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("Beli", fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, tint = Color.Red, modifier = Modifier.size(64.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Gagal Memuat", fontWeight = FontWeight.Bold)
+        Text(text = message, color = Color.Gray, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Icon(Icons.Default.Refresh, contentDescription = null)
+            Text(" Coba Lagi")
         }
     }
 }
@@ -226,7 +274,8 @@ fun CartPopup(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 500.dp),
-            shape = MaterialTheme.shapes.large
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Keranjang Belanja", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -234,58 +283,49 @@ fun CartPopup(
 
                 if (cartItems.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("Keranjang Kosong")
+                        Text("Keranjang Kosong", color = Color.Gray)
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
+                    // LazyColumn menggunakan 'items' dari androidx.compose.foundation.lazy.items
+                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
                         items(cartItems) { item ->
-                            CartItemRow(item, onAdd, onRemove)
-                            Divider()
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = "http://10.0.2.2:3000/uploads/${item.produk.gambar ?: ""}",
+                                    contentDescription = null, modifier = Modifier.size(50.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop,
+                                    error = painterResource(R.drawable.ic_launcher_background)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.produk.namaProduk ?: "Item", fontWeight = FontWeight.Bold, maxLines = 1)
+                                    Text("Rp ${String.format("%,.0f", item.produk.harga)}", fontSize = 12.sp, color = Color.Gray)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { onRemove(item.produk) }, modifier = Modifier.size(24.dp)) {
+                                        Text("-", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    }
+                                    Text("${item.jumlah}", modifier = Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
+                                    IconButton(onClick = { onAdd(item.produk) }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                            Divider(color = Color.LightGray.copy(alpha = 0.5f))
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Total:", style = MaterialTheme.typography.titleMedium)
-                    Text("Rp ${String.format("%,.0f", totalPrice)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Rp ${String.format("%,.0f", totalPrice)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth(), enabled = cartItems.isNotEmpty()) {
+                Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth(), enabled = cartItems.isNotEmpty(), shape = RoundedCornerShape(8.dp)) {
                     Text("Checkout")
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun CartItemRow(item: CartItem, onAdd: (Produk) -> Unit, onRemove: (Produk) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = "http://10.0.2.2:3000/uploads/${item.produk.gambar ?: ""}",
-            contentDescription = null, modifier = Modifier.size(60.dp), contentScale = ContentScale.Crop,
-            error = painterResource(R.drawable.ic_launcher_background)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            // PERBAIKAN DI SINI JUGA
-            Text(
-                text = item.produk.namaProduk ?: "Produk",
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1
-            )
-            Text("Rp ${item.produk.harga}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onRemove(item.produk) }, modifier = Modifier.size(30.dp)) {
-                Text("-", style = MaterialTheme.typography.titleLarge)
-            }
-            Text("${item.jumlah}", modifier = Modifier.padding(horizontal = 8.dp))
-            IconButton(onClick = { onAdd(item.produk) }, modifier = Modifier.size(30.dp)) {
-                Icon(Icons.Default.Add, contentDescription = null)
             }
         }
     }

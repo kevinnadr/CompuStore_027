@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    // 1. TAMBAHKAN PLUGIN VIA ALIAS
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -62,6 +64,16 @@ dependencies {
 
     // 4. ViewModel (Menyimpan data agar tidak hilang saat rotasi layar)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.compose.material:material-icons-extended")
+    // 2. WAJIB ADA (LIBRARY UTAMA)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // 3. WAJIB ADA (AGAR BISA DIPAKAI DI RETROFIT)
+    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
+
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

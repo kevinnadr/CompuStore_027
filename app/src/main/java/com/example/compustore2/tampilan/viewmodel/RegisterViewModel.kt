@@ -1,6 +1,5 @@
 package com.example.compustore2.tampilan.viewmodel
 
-
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,37 +9,72 @@ import com.example.compustore2.model.RegisterRequest
 import com.example.compustore2.repositori.RepositoriCompustore
 import kotlinx.coroutines.launch
 
-sealed interface RegisterUiState {
-    object Idle : RegisterUiState
-    object Loading : RegisterUiState
-    object Success : RegisterUiState
-    data class Error(val message: String) : RegisterUiState
-}
+// 1. Definisikan State UI untuk Register di sini agar jelas
+data class RegisterUiState(
+    val nama: String = "",
+    val email: String = "",
+    val password: String = "",
+    val isLoading: Boolean = false,
+    val isSuccess: Boolean = false,
+    val errorMessage: String? = null
+)
 
 class RegisterViewModel(private val repositori: RepositoriCompustore) : ViewModel() {
-    var uiState: RegisterUiState by mutableStateOf(RegisterUiState.Idle)
+
+    // 2. State Holder
+    var uiState by mutableStateOf(RegisterUiState())
         private set
 
-    var nama by mutableStateOf("")
-    var email by mutableStateOf("")
-    var password by mutableStateOf("")
-    var noHp by mutableStateOf("")
+    // 3. Fungsi untuk Update Text saat diketik
+    fun updateUiState(nama: String? = null, email: String? = null, password: String? = null) {
+        uiState = uiState.copy(
+            nama = nama ?: uiState.nama,
+            email = email ?: uiState.email,
+            password = password ?: uiState.password,
+            errorMessage = null // Reset error saat user mengetik
+        )
+    }
 
+    // 4. Fungsi Register ke Server
     fun onRegister() {
-        uiState = RegisterUiState.Loading
         viewModelScope.launch {
+            // Validasi Input Kosong
+            if (uiState.nama.isBlank() || uiState.email.isBlank() || uiState.password.isBlank()) {
+                uiState = uiState.copy(errorMessage = "Semua kolom wajib diisi!")
+                return@launch
+            }
+
+            uiState = uiState.copy(isLoading = true, errorMessage = null)
+
             try {
-                val response = repositori.register(RegisterRequest(nama, email, password, noHp))
+                // PERBAIKAN UTAMA: Gunakan Named Arguments agar tidak tertukar/error constructor
+                val request = RegisterRequest(
+                    nama = uiState.nama,
+                    email = uiState.email,
+                    password = uiState.password
+                )
+
+                val response = repositori.register(request)
+
                 if (response.isSuccessful) {
-                    uiState = RegisterUiState.Success
+                    uiState = uiState.copy(isLoading = false, isSuccess = true)
                 } else {
-                    uiState = RegisterUiState.Error("Register gagal: ${response.message()}")
+                    uiState = uiState.copy(
+                        isLoading = false,
+                        errorMessage = "Gagal Register: Kode ${response.code()}"
+                    )
                 }
             } catch (e: Exception) {
-                uiState = RegisterUiState.Error("Terjadi kesalahan: ${e.message}")
+                uiState = uiState.copy(
+                    isLoading = false,
+                    errorMessage = "Error Koneksi: ${e.localizedMessage}"
+                )
             }
         }
     }
 
-    fun resetState() { uiState = RegisterUiState.Idle }
+    // Reset state setelah sukses (agar pas balik ga sukses terus)
+    fun resetState() {
+        uiState = RegisterUiState()
+    }
 }

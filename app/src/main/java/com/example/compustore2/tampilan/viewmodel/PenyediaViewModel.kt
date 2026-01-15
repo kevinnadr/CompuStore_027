@@ -1,54 +1,85 @@
 package com.example.compustore2.tampilan.viewmodel
 
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.compustore2.CompustoreApplication
 
-
 object PenyediaViewModel {
     val Factory = viewModelFactory {
 
-        // 1. Initializer untuk HomeViewModel
+        // 1. HomeViewModel
         initializer {
-            HomeViewModel(aplikasiCompustore().container.repositoriCompustore)
+            HomeViewModel(
+                repositori = compustoreApp().container.repositoriCompustore
+            )
         }
 
-        // 2. Initializer untuk LoginViewModel
+        // 2. DetailViewModel
         initializer {
-            LoginViewModel(aplikasiCompustore().container.repositoriCompustore)
+            DetailViewModel(
+                repositori = compustoreApp().container.repositoriCompustore
+            )
         }
 
-        // 3. Initializer untuk RegisterViewModel
+        // 3. EntryViewModel
         initializer {
-            RegisterViewModel(aplikasiCompustore().container.repositoriCompustore)
+            EntryViewModel(
+                repositori = compustoreApp().container.repositoriCompustore
+            )
         }
 
-        // 4. Initializer untuk CheckoutViewModel (INI YANG KURANG)
+        // 4. UpdateViewModel
         initializer {
-            CheckoutViewModel(aplikasiCompustore().container.repositoriCompustore)
+            UpdateViewModel(
+                savedStateHandle = createSavedStateHandle(),
+                repositori = compustoreApp().container.repositoriCompustore
+            )
         }
 
-        // 5. Initializer untuk RiwayatViewModel (Jika sudah dibuat)
+        // 5. CheckoutViewModel
         initializer {
-            RiwayatViewModel(aplikasiCompustore().container.repositoriCompustore)
-        }
-        initializer {
-            ProfileViewModel(aplikasiCompustore().container.repositoriCompustore)
-        }
-
-        initializer {
-            EntryViewModel(aplikasiCompustore().container.repositoriCompustore)
+            CheckoutViewModel(
+                repositori = compustoreApp().container.repositoriCompustore
+            )
         }
 
+        // 6. LoginViewModel (INI YANG BIKIN ERROR SEBELUMNYA)
         initializer {
-            DetailViewModel(aplikasiCompustore().container.repositoriCompustore)
+            LoginViewModel(
+                repositori = compustoreApp().container.repositoriCompustore,
+                // Tambahkan baris ini agar error hilang:
+                userPreferencesRepository = compustoreApp().container.userPreferencesRepository
+            )
         }
 
+        // 7. RegisterViewModel
+        initializer {
+            RegisterViewModel(
+                repositori = compustoreApp().container.repositoriCompustore
+            )
+        }
+
+        // 8. RiwayatViewModel
+        initializer {
+            RiwayatViewModel(
+                repositori = compustoreApp().container.repositoriCompustore
+            )
+        }
+
+        // 9. ProfileViewModel (Biasanya juga butuh UserPreferences)
+        initializer {
+            ProfileViewModel(
+                repositori = compustoreApp().container.repositoriCompustore,
+                // Tambahkan ini jika ProfileViewModel Anda memintanya juga
+                userPreferencesRepository = compustoreApp().container.userPreferencesRepository
+            )
+        }
     }
 }
 
-// Fungsi ekstensi untuk mempermudah akses
-fun CreationExtras.aplikasiCompustore(): CompustoreApplication =
+// Extension function
+fun CreationExtras.compustoreApp(): CompustoreApplication =
     (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as CompustoreApplication)
